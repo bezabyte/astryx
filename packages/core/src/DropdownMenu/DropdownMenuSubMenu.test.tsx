@@ -30,6 +30,22 @@ import {Theme, defineTheme} from '../theme';
 import {rtlStyles} from '../utils';
 import {TOUCH_QUERY} from '../utils/touchPresentation';
 
+function travelPointer(element: HTMLElement) {
+  fireEvent.pointerMove(element, {
+    pointerType: 'mouse',
+    clientX: 1,
+    movementX: 1,
+  });
+}
+
+async function hoverWithTravel(
+  user: ReturnType<typeof userEvent.setup>,
+  element: HTMLElement,
+) {
+  await user.hover(element);
+  travelPointer(element);
+}
+
 beforeEach(() => {
   HTMLElement.prototype.showPopover = vi.fn(function (this: HTMLElement) {
     this.setAttribute('popover-open', '');
@@ -1166,7 +1182,7 @@ describe('DropdownMenuSubMenu hover timing', () => {
       name: /Move to/,
       hidden: true,
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(100);
     });
@@ -1201,7 +1217,7 @@ describe('DropdownMenuSubMenu hover timing', () => {
       name: /Move to/,
       hidden: true,
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(500);
     });
@@ -1224,7 +1240,7 @@ describe('DropdownMenuSubMenu hover timing', () => {
       name: /Move to/,
       hidden: true,
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -1258,7 +1274,7 @@ describe('DropdownMenuSubMenu hover/click guard', () => {
       hidden: true,
     });
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -1284,7 +1300,7 @@ describe('DropdownMenuSubMenu hover/click guard', () => {
       hidden: true,
     });
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -1455,7 +1471,7 @@ describe('DropdownMenuSubMenu safe triangle', () => {
       name: /Move to/,
       hidden: true,
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -2112,6 +2128,7 @@ describe('DropdownMenuSubMenu light dismiss of the root menu (#6893)', () => {
 
       // Schedules the hover-open (default show delay 150ms).
       fireEvent.mouseEnter(trigger);
+      travelPointer(trigger);
 
       // Close from elsewhere while the hover-open is still pending.
       lightDismissRootMenu();
@@ -2399,6 +2416,7 @@ describe('DropdownMenuSubMenu header and footer', () => {
     fireEvent.click(screen.getByRole('button', {name: /Session/}));
     const row = screen.getByRole('menuitem', {name: /Labels/, ...h});
     fireEvent.mouseEnter(row);
+    travelPointer(row);
     act(() => {
       vi.advanceTimersByTime(500);
     });

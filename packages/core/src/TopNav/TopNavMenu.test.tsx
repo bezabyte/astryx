@@ -40,6 +40,22 @@ function tap(el: HTMLElement) {
   fireEvent.click(el, {detail: 1});
 }
 
+function travelPointer(element: HTMLElement) {
+  fireEvent.pointerMove(element, {
+    pointerType: 'mouse',
+    clientX: 1,
+    movementX: 1,
+  });
+}
+
+async function hoverWithTravel(
+  user: ReturnType<typeof userEvent.setup>,
+  element: HTMLElement,
+) {
+  await user.hover(element);
+  travelPointer(element);
+}
+
 describe('TopNavMenu', () => {
   it.each([
     'javascript:alert(1)',
@@ -277,7 +293,7 @@ describe('keyboard navigation (APG menu pattern)', () => {
         />,
       );
       const trigger = screen.getByRole('button', {name: 'Menu'});
-      await user.hover(trigger);
+      await hoverWithTravel(user, trigger);
       act(() => {
         vi.advanceTimersByTime(200);
       });
@@ -298,6 +314,7 @@ describe('keyboard navigation (APG menu pattern)', () => {
       // A real leave and return opens it again.
       fireEvent.mouseLeave(trigger);
       fireEvent.mouseEnter(trigger);
+      travelPointer(trigger);
       act(() => {
         vi.advanceTimersByTime(200);
       });
@@ -530,7 +547,7 @@ describe('TopNavMenu — owned handlers on the trigger', () => {
     );
 
     const trigger = screen.getByRole('button', {name: 'Products'});
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });

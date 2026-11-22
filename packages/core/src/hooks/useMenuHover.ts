@@ -152,7 +152,7 @@ export interface UseMenuHoverOptions {
 export interface UseMenuHoverReturn<T extends HTMLElement = HTMLElement> {
   triggerProps: {
     onClick: (event?: React.MouseEvent) => void;
-    onMouseEnter: () => void;
+    onMouseEnter: (event: React.MouseEvent) => void;
     /**
      * Pass the event through: the pointer's position when it leaves the
      * trigger is the apex of the safe triangle toward the flyout.
@@ -211,6 +211,8 @@ export function useMenuHover<T extends HTMLElement = HTMLElement>(
   const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerElRef = useRef<HTMLElement | null>(null);
+  /** Removes the trigger listener that distinguishes travel from layout. */
+  const hoverEntryCleanupRef = useRef<(() => void) | null>(null);
   /** Removes the document pointer listener that watches the safe triangle. */
   const safeTriangleCleanupRef = useRef<(() => void) | null>(null);
   /** Menu was hover-opened, so mouseleave may close it. */
@@ -229,6 +231,8 @@ export function useMenuHover<T extends HTMLElement = HTMLElement>(
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
+    hoverEntryCleanupRef.current?.();
+    hoverEntryCleanupRef.current = null;
     safeTriangleCleanupRef.current?.();
     safeTriangleCleanupRef.current = null;
   }, []);
@@ -399,41 +403,71 @@ export function useMenuHover<T extends HTMLElement = HTMLElement>(
     ],
   );
 
-  const handleMouseEnter = useCallback(() => {
-    if (!hasHover) {
-      return;
-    }
-    if (
-      closedAtRef.current > 0 &&
-      Date.now() - closedAtRef.current < REOPEN_SUPPRESS_MS
-    ) {
-      return;
-    }
-    // Re-entering an open menu's trigger must not un-pin it or re-arm the
-    // guard, which would make the next deliberate click another "confirm" and
-    // leave the menu undismissable.
-    if (isOpen) {
+  const handleMouseEnter = useCallback(
+    (event: React.MouseEvent) => {
+      if (!hasHover) {
+        return;
+      }
+      if (
+        closedAtRef.current > 0 &&
+        Date.now() - closedAtRef.current < REOPEN_SUPPRESS_MS
+      ) {
+        return;
+      }
+      // Re-entering an open menu's trigger must not un-pin it or re-arm the
+      // guard, which would make the next deliberate click another "confirm" and
+      // leave the menu undismissable.
+      if (isOpen) {
+        clearTimeouts();
+        return;
+      }
       clearTimeouts();
-      return;
-    }
-    hoverModeRef.current = true;
-    clearTimeouts();
-    const openByHover = () => {
-      hoverOpenedAtRef.current = Date.now();
-      show({skipAutoFocus: true});
-    };
-    if (showDelay > 0) {
-      showTimerRef.current = setTimeout(openByHover, showDelay);
-    } else {
-      openByHover();
-    }
-  }, [hasHover, isOpen, clearTimeouts, show, showDelay]);
+      const trigger = event.currentTarget;
+      const entryPoint = {x: event.clientX, y: event.clientY};
+      const onPointerMove: EventListener = event => {
+        const move = event as PointerEvent;
+        if (move.pointerType !== 'mouse' && move.pointerType !== 'pen') {
+          return;
+        }
+        // Boundary events can come from layout moving a trigger under a still
+        // pointer. Pressure or tilt can also move a pen event without moving its
+        // tip. Only coordinate travel establishes hover intent.
+        if (
+          move.movementX === 0 &&
+          move.movementY === 0 &&
+          move.clientX === entryPoint.x &&
+          move.clientY === entryPoint.y
+        ) {
+          return;
+        }
+        hoverEntryCleanupRef.current?.();
+        hoverEntryCleanupRef.current = null;
+        hoverModeRef.current = true;
+        const openByHover = () => {
+          hoverOpenedAtRef.current = Date.now();
+          show({skipAutoFocus: true});
+        };
+        if (showDelay > 0) {
+          showTimerRef.current = setTimeout(openByHover, showDelay);
+        } else {
+          openByHover();
+        }
+      };
+      trigger.addEventListener('pointermove', onPointerMove);
+      hoverEntryCleanupRef.current = () => {
+        trigger.removeEventListener('pointermove', onPointerMove);
+      };
+    },
+    [hasHover, isOpen, clearTimeouts, show, showDelay],
+  );
 
   const handleMouseLeave = useCallback(
     (event?: React.MouseEvent) => {
       // A real leave ends the stationary-pointer case the suppression window
       // exists for, so the next enter is deliberate whenever it arrives.
       closedAtRef.current = 0;
+      hoverEntryCleanupRef.current?.();
+      hoverEntryCleanupRef.current = null;
       if (!hoverModeRef.current) {
         return;
       }

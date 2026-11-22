@@ -83,6 +83,22 @@ function tap(el: HTMLElement) {
   fireEvent.click(el, {detail: 1});
 }
 
+function travelPointer(element: HTMLElement) {
+  fireEvent.pointerMove(element, {
+    pointerType: 'mouse',
+    clientX: 1,
+    movementX: 1,
+  });
+}
+
+async function hoverWithTravel(
+  user: ReturnType<typeof userEvent.setup>,
+  element: HTMLElement,
+) {
+  await user.hover(element);
+  travelPointer(element);
+}
+
 describe('TopNavMegaMenu — default mode', () => {
   it('renders the trigger button with label', () => {
     render(
@@ -289,7 +305,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     const trigger = renderMenu();
 
     // Hover opens the panel after the show delay (150ms).
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -313,7 +329,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -345,7 +361,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -380,7 +396,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -391,7 +407,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     act(() => {
       vi.advanceTimersByTime(100);
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -425,7 +441,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -437,7 +453,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     act(() => {
       vi.advanceTimersByTime(600);
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -467,7 +483,7 @@ describe('TopNavMegaMenu — hover/click guard (default mode)', () => {
     await user.click(products);
     expect(products).toHaveAttribute('aria-expanded', 'true');
 
-    await user.hover(solutions);
+    await hoverWithTravel(user, solutions);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -814,7 +830,7 @@ describe('TopNavMegaMenu — keyboard (default mode)', () => {
         />,
       );
       const trigger = screen.getByRole('button', {name: 'Products'});
-      await user.hover(trigger);
+      await hoverWithTravel(user, trigger);
       act(() => {
         vi.advanceTimersByTime(200);
       });
@@ -835,6 +851,7 @@ describe('TopNavMegaMenu — keyboard (default mode)', () => {
       // A real leave and return opens it again.
       fireEvent.mouseLeave(trigger);
       fireEvent.mouseEnter(trigger);
+      travelPointer(trigger);
       act(() => {
         vi.advanceTimersByTime(200);
       });
@@ -1241,7 +1258,7 @@ describe('TopNavMegaMenu — owned handlers on the trigger', () => {
     );
 
     const trigger = screen.getByRole('button', {name: 'Products'});
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });

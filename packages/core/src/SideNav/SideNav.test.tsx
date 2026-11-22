@@ -42,6 +42,22 @@ import {
   type SideNavImperativeCollapseHandle,
 } from './SideNavCollapseContext';
 
+function travelPointer(element: HTMLElement) {
+  fireEvent.pointerMove(element, {
+    pointerType: 'mouse',
+    clientX: 1,
+    movementX: 1,
+  });
+}
+
+async function hoverWithTravel(
+  user: ReturnType<typeof userEvent.setup>,
+  element: HTMLElement,
+) {
+  await user.hover(element);
+  travelPointer(element);
+}
+
 function CustomLink({
   children,
   ref,
@@ -2075,6 +2091,7 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
       const trigger = renderFlyout();
       const label = labelTooltipOf(trigger);
       fireEvent.mouseEnter(trigger);
+      travelPointer(trigger);
       advance(1000);
       expect(trigger).toHaveAttribute('aria-expanded', 'true');
       expect(showPopover.mock.contexts).not.toContain(label);
@@ -2089,6 +2106,7 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
     const trigger = renderFlyout();
 
     fireEvent.mouseEnter(trigger);
+    travelPointer(trigger);
     // A pointer merely passing over the icon must not open anything.
     advance(SHOW_DELAY - 1);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -2103,6 +2121,7 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
     const trigger = renderFlyout();
 
     fireEvent.mouseEnter(trigger);
+    travelPointer(trigger);
     advance(SHOW_DELAY);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
@@ -2133,6 +2152,7 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
     const trigger = renderFlyout();
 
     fireEvent.mouseEnter(trigger);
+    travelPointer(trigger);
     advance(SHOW_DELAY);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
@@ -2148,6 +2168,7 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
     // One-shot, not a latch: a deliberate leave-and-return opens it again.
     fireEvent.mouseLeave(trigger);
     fireEvent.mouseEnter(trigger);
+    travelPointer(trigger);
     advance(SHOW_DELAY);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
@@ -2182,7 +2203,9 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
       </SideNavCollapseContext>,
     );
 
-    fireEvent.mouseEnter(screen.getByTestId('parent'));
+    const trigger = screen.getByTestId('parent');
+    fireEvent.mouseEnter(trigger);
+    travelPointer(trigger);
     expect(vi.getTimerCount()).toBeGreaterThan(0);
 
     unmount();
@@ -2253,6 +2276,7 @@ describe('SideNavItem — collapsed submenu hover intent', () => {
     trigger.focus();
 
     fireEvent.mouseEnter(trigger);
+    travelPointer(trigger);
     advance(SHOW_DELAY);
     act(() => {
       vi.advanceTimersToNextFrame();
@@ -3863,7 +3887,7 @@ describe('SideNavHeading hover/click guard', () => {
     render(<SideNavHeading heading="My App" menu={menuItems} />);
     const trigger = screen.getByRole('button', {name: /Open menu/});
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(50);
     });
@@ -3881,7 +3905,7 @@ describe('SideNavHeading hover/click guard', () => {
     render(<SideNavHeading heading="My App" menu={menuItems} />);
     const trigger = screen.getByRole('button', {name: /Open menu/});
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(50);
     });
@@ -3901,7 +3925,7 @@ describe('SideNavHeading hover/click guard', () => {
     render(<SideNavHeading heading="My App" menu={menuItems} />);
     const trigger = screen.getByRole('button', {name: /Open menu/});
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(50);
     });

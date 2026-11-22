@@ -46,6 +46,34 @@ function firstMenuItem() {
   return document.querySelector<HTMLElement>('[role="menuitem"]');
 }
 
+async function hoverWithTravel(
+  user: ReturnType<typeof userEvent.setup>,
+  trigger: HTMLElement,
+) {
+  await user.hover(trigger);
+  fireEvent.pointerMove(trigger, {
+    pointerType: 'mouse',
+    clientX: 1,
+    clientY: 0,
+    movementX: 1,
+  });
+}
+
+function HoverEntryHarness({show}: {show: () => void}) {
+  const {triggerProps} = useMenuHover<HTMLButtonElement>({
+    show,
+    hide: () => {},
+    isOpen: false,
+    isEnabled: true,
+    showDelay: 0,
+  });
+  return (
+    <button type="button" {...triggerProps}>
+      Products
+    </button>
+  );
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -57,7 +85,7 @@ describe('useMenuHover — hover/click guard', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     act(() => {
@@ -71,7 +99,7 @@ describe('useMenuHover — hover/click guard', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -86,7 +114,7 @@ describe('useMenuHover — hover/click guard', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -104,7 +132,7 @@ describe('useMenuHover — hover/click guard', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -122,7 +150,7 @@ describe('useMenuHover — hover/click guard', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -144,7 +172,7 @@ describe('useMenuHover — hover/click guard', () => {
 
     // Re-entering must not un-pin it, nor make the next click a "confirm".
     await user.unhover(trigger);
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -166,7 +194,7 @@ describe('useMenuHover — hover/click guard', () => {
     // the trigger reopens the menu — which made Escape look inert.
     await user.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -186,7 +214,7 @@ describe('useMenuHover — hover/click guard', () => {
     act(() => {
       vi.advanceTimersByTime(600);
     });
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -204,13 +232,97 @@ describe('useMenuHover — hover/click guard', () => {
   });
 });
 
+describe('useMenuHover — hover entry intent', () => {
+  it('does not open when layout puts the trigger under a stationary pointer', () => {
+    const show = vi.fn();
+    render(<HoverEntryHarness show={show} />);
+    const trigger = screen.getByRole('button', {name: 'Products'});
+
+    fireEvent.mouseEnter(trigger, {clientX: 40, clientY: 20});
+
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it('cancels a pending stationary entry when the pointer leaves', () => {
+    const show = vi.fn();
+    render(<HoverEntryHarness show={show} />);
+    const trigger = screen.getByRole('button', {name: 'Products'});
+
+    fireEvent.mouseEnter(trigger, {clientX: 40, clientY: 20});
+    fireEvent.mouseLeave(trigger, {clientX: 40, clientY: 20});
+    fireEvent.pointerMove(trigger, {
+      pointerType: 'mouse',
+      clientX: 41,
+      clientY: 20,
+    });
+
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it('removes the pending pointer listener on unmount', () => {
+    const show = vi.fn();
+    const {unmount} = render(<HoverEntryHarness show={show} />);
+    const trigger = screen.getByRole('button', {name: 'Products'});
+    const removeEventListener = vi.spyOn(trigger, 'removeEventListener');
+
+    fireEvent.mouseEnter(trigger, {clientX: 40, clientY: 20});
+    unmount();
+
+    expect(removeEventListener).toHaveBeenCalledWith(
+      'pointermove',
+      expect.any(Function),
+    );
+  });
+
+  it('opens on the pointer move from a real boundary crossing', () => {
+    const show = vi.fn();
+    render(<HoverEntryHarness show={show} />);
+    const trigger = screen.getByRole('button', {name: 'Products'});
+
+    fireEvent.mouseEnter(trigger, {clientX: 40, clientY: 20});
+    fireEvent.pointerMove(trigger, {
+      pointerType: 'mouse',
+      clientX: 40,
+      clientY: 20,
+      movementX: 4,
+    });
+
+    expect(show).toHaveBeenCalledOnce();
+  });
+
+  it('ignores pen pressure and tilt changes until its coordinates move', () => {
+    const show = vi.fn();
+    render(<HoverEntryHarness show={show} />);
+    const trigger = screen.getByRole('button', {name: 'Products'});
+
+    fireEvent.mouseEnter(trigger, {clientX: 40, clientY: 20});
+    fireEvent.pointerMove(trigger, {
+      pointerType: 'pen',
+      clientX: 40,
+      clientY: 20,
+      pressure: 0.4,
+      tiltX: 15,
+    });
+    expect(show).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(trigger, {
+      pointerType: 'pen',
+      clientX: 41,
+      clientY: 20,
+      pressure: 0.4,
+      tiltX: 15,
+    });
+    expect(show).toHaveBeenCalledOnce();
+  });
+});
+
 describe('useMenuHover — focus management', () => {
   it('leaves focus on the trigger for a hover-open', async () => {
     vi.useFakeTimers({shouldAdvanceTime: true});
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -234,7 +346,7 @@ describe('useMenuHover — focus management', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -297,7 +409,7 @@ describe('useMenuHover — keyboard activation', () => {
 
     // A hover-open is the only state where a keyboard user can activate the
     // trigger of an open menu; closing on Enter would strand them.
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -332,7 +444,7 @@ describe('useMenuHover — devices without hover', () => {
 
     // Taps emit a compatibility mouseenter; opening on it leaves a menu
     // hanging open behind the tap.
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(500);
     });
@@ -422,7 +534,7 @@ describe('useMenuHover — the click guard and its consumers', () => {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });
@@ -452,7 +564,7 @@ describe('useMenuHover — the click guard and its consumers', () => {
     const remove = vi.spyOn(document, 'removeEventListener');
     const trigger = renderMenu();
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(300);
     });

@@ -28,6 +28,18 @@ import {InternationalizationProvider} from '../i18n/InternationalizationProvider
 import koreanCatalog from '../../locales/ko-KR.json';
 import {rtlStyles} from '../utils';
 
+async function hoverWithTravel(
+  user: ReturnType<typeof userEvent.setup>,
+  element: HTMLElement,
+) {
+  await user.hover(element);
+  fireEvent.pointerMove(element, {
+    pointerType: 'mouse',
+    clientX: 1,
+    movementX: 1,
+  });
+}
+
 function CustomLink({
   children,
   ref,
@@ -1464,7 +1476,7 @@ describe('TopNavHeading hover/click guard', () => {
     render(<TopNavHeading heading="My App" menu={menuItems} />);
     const trigger = screen.getByRole('button', {name: /Open menu/});
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(50);
     });
@@ -1482,7 +1494,7 @@ describe('TopNavHeading hover/click guard', () => {
     render(<TopNavHeading heading="My App" menu={menuItems} />);
     const trigger = screen.getByRole('button', {name: /Open menu/});
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(50);
     });
@@ -1502,7 +1514,7 @@ describe('TopNavHeading hover/click guard', () => {
     render(<TopNavHeading heading="My App" menu={menuItems} />);
     const trigger = screen.getByRole('button', {name: /Open menu/});
 
-    await user.hover(trigger);
+    await hoverWithTravel(user, trigger);
     act(() => {
       vi.advanceTimersByTime(50);
     });
